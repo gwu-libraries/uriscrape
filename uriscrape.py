@@ -1,4 +1,5 @@
 import argparse
+import datetime
 from pdfminer.high_level import extract_text_to_fp
 import requests
 import io
@@ -7,7 +8,7 @@ import sys
 import csv
 import re
 import nltk
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 nltk.download('punkt')
 
@@ -21,14 +22,25 @@ def extract_text(pdf_filepath):
 
 def unshorten(url):
     """Don't try to guess; just resolve it, and follow 301s"""
+    status = ''
     try:
         h = requests.get(url)
         stack = [i.url for i in h.history]
         stack.append(h.url)
         stack = stack[-1]  # Just keep the last one
-    except:
-        stack = ''
-    return stack
+    except Exception as e:
+        if type(e).__name__ is 'ConnectionError':
+            errorstring = e.args[0].args[0]
+            hostpos = errorstring.find('host=')
+            portpos = errorstring.find(', port=')
+            withurlpos = errorstring.find('exceeded with url: ')
+            causedbypos = errorstring.find(' (Caused')
+            stack = unquote('http://' + errorstring[(hostpos+6):(portpos-1)] + errorstring[(withurlpos+19):(causedbypos)])
+            status = 'ConnectionError'
+        else:
+            stack = ''
+            status = type(e).__name__
+    return stack, status
 
 
 def domain(url):
@@ -45,6 +57,29 @@ def primary_secondary(url):
     # To consider: Would a single-length case ever happen?
     else:
         return url
+
+
+def urltype(url):
+    """ return type and hashtag (if present) """
+    u = unquote(url.lstrip('(').rstrip(')'))
+    if u.startswith('https://telegram.me/joinchat') \
+            or u.startswith('https://t.me/joinchat') \
+            or u.startswith('tg://join?invite'):
+        return 'tg_joinlink',''
+    # any other telegram.me
+    if u.startswith('https://telegram.me') \
+            or u.startswith('https://t.me') \
+            or u.startswith('tg://resolve?domain='):
+        return 'tg_account',''
+    if u.startswith('tg://search_hashtag'):
+        return 'tg_hashtag',u[28:]
+    if 'web.telegram.org' in u \
+            or 'telegram.org' in u \
+            or 'telegram.me' in u \
+            or u.startswith('tg://'):
+        return 'tg_other',''
+
+    return 'external',''
 
 
 if __name__ == '__main__':
@@ -68,7 +103,7 @@ if __name__ == '__main__':
 
     with open("urls.csv", "w") as outfile:
         csvout = csv.writer(outfile)
-        csvout.writerow(['URL', 'Unshortened URL', 'Domain', 'Primary_Secondary'])
+        csvout.writerow(['File','Access_Date','URL', 'Unshortened URL', 'Status', 'Type', 'Hashtag', 'Domain', 'Primary_Secondary'])
         for m_transcript_filepath in m_transcript_filepaths:
             print('Processing {}'.format(m_transcript_filepath))
             m_transcript_text = extract_text(m_transcript_filepath)
@@ -77,19 +112,24 @@ if __name__ == '__main__':
 
             # A pretty good regex for finding URLs in Telegram transcripts
             regex = '[\(]?(https|http|tg):(\/\/)[^\s\(\)]+[\)]?'
+            # dateregex = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)(, )(January|February|March|April|May|June|July|August|September|October|November|December)( )[0-9]?[0-9](, 20)[0-2][0-9]'
             matches = re.finditer(regex, m_transcript_text, re.MULTILINE)
+            filename = os.path.basename(m_transcript_filepath)
             for m in matches:
                 print(m.group())
                 url = m.group()
                 expanded_url = ''
                 url_domain = ''
+                status = ''
+                extract_date = datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
                 if url.startswith('(http') or url.startswith('http'):
                     cleaned_url = url.lstrip('(').rstrip(')')
-                    expanded_url = unshorten(cleaned_url)
+                    expanded_url, status = unshorten(cleaned_url)
                     if expanded_url is '':  # like if it couldn't reach the site
                         # Then just stick with the original URL
                         url_domain = domain(cleaned_url)
                     else:
                         # Use the expanded URL
                         url_domain = domain(expanded_url)
-                csvout.writerow([url] + [expanded_url] + [url_domain] + [primary_secondary(url_domain)])
+                utype, hashtag = urltype(expanded_url or url) # if expanded_url isn't empty, use it; otherwise use url
+                csvout.writerow([filename, extract_date, unquote(url), unquote(expanded_url), status, utype, hashtag, url_domain, primary_secondary(url_domain)])
