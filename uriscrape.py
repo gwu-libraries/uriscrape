@@ -67,6 +67,8 @@ def urltype(url):
             or u.startswith('tg://join?invite'):
         return 'tg_joinlink',''
     # any other telegram.me
+    if u.startswith('https://web.telegram.org/#/im?p='):
+        return 'tg_channel_id',''
     if u.startswith('https://telegram.me') \
             or u.startswith('https://t.me') \
             or u.startswith('tg://resolve?domain='):
@@ -115,6 +117,7 @@ if __name__ == '__main__':
             # dateregex = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)(, )(January|February|March|April|May|June|July|August|September|October|November|December)( )[0-9]?[0-9](, 20)[0-2][0-9]'
             matches = re.finditer(regex, m_transcript_text, re.MULTILINE)
             filename = os.path.basename(m_transcript_filepath)
+            lasturl = ''
             for m in matches:
                 print(m.group())
                 url = m.group()
@@ -122,8 +125,16 @@ if __name__ == '__main__':
                 url_domain = ''
                 status = ''
                 extract_date = datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+                cleaned_url = url.lstrip('(').rstrip(')')
+                if cleaned_url == lasturl:
+                    # skip if successive URLs are exactly identical
+                    continue
+                if cleaned_url.lstrip('tg://join?invite=') == lasturl.lstrip('https://telegram.me/joinchat/'):
+                    continue
+                if cleaned_url.lstrip('tg://resolve?domain=') == lasturl.lstrip('https://telegram.me/'):
+                    continue
+                lasturl = cleaned_url
                 if url.startswith('(http') or url.startswith('http'):
-                    cleaned_url = url.lstrip('(').rstrip(')')
                     expanded_url, status = unshorten(cleaned_url)
                     if expanded_url is '':  # like if it couldn't reach the site
                         # Then just stick with the original URL
