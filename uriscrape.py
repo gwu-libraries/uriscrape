@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     with open("urls.csv", "w") as outfile:
         csvout = csv.writer(outfile)
-        csvout.writerow(['File','Access_Date','URL', 'Site_Reachable', 'Unshortened URL', 'Status', 'Type', 'Hashtag', 'Channel', 'Account', 'Domain', 'Primary_Secondary'])
+        csvout.writerow(['File','Access_Date','Post_Date','URL', 'Site_Reachable', 'Unshortened URL', 'Status', 'Type', 'Hashtag', 'Channel', 'Account', 'Domain', 'Primary_Secondary'])
         for m_transcript_filepath in m_transcript_filepaths:
             print('Processing {}'.format(m_transcript_filepath))
             m_transcript_text = extract_text(m_transcript_filepath)
@@ -121,14 +121,24 @@ if __name__ == '__main__':
             # m_transcript_words = tokenize(m_transcript_text)
 
             # A pretty good regex for finding URLs in Telegram transcripts
-            regex = '[\(]?(https|http|tg):(\/\/)[^\s\(\)]+[\)]?'
-            # dateregex = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)(, )(January|February|March|April|May|June|July|August|September|October|November|December)( )[0-9]?[0-9](, 20)[0-2][0-9]'
+            linkregex = '[\(]?(https|http|tg):(\/\/)[^\s\(\)]+[\)]?'
+            # Note the ( | ) expressions in dateregex: One of the characters is not the usual space character.
+            # It's ord() value is 160, vs. 32 for regular space.  This catches more date matches.
+            dateregex = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)(,( | ))(January|February|March|April|May|June|July|August|September|October|November|December)( | )[0-9]?[0-9](,( | )20)[0-2][0-9]'
+            regex = '(' + linkregex + '|' + dateregex + ')'
             matches = re.finditer(regex, m_transcript_text, re.MULTILINE)
             filename = os.path.basename(m_transcript_filepath)
             lasturl = ''
+            last_date = ''
             for m in matches:
                 print(m.group())
-                url = m.group()
+                match = m.group()
+                if 'day' in match[3:9]:
+                    # set the date, then move on to the next match
+                    last_date = match.replace(' ', ' ')
+                    continue
+
+                url = match
                 expanded_url = ''
                 url_domain = ''
                 status = ''
@@ -164,4 +174,4 @@ if __name__ == '__main__':
                     continue
                 if utype != 'external':
                     site_reachable = ''
-                csvout.writerow([filename, extract_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
+                csvout.writerow([filename, extract_date, last_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
