@@ -5,9 +5,9 @@ import requests
 import io
 import os
 import sys
-import csv
 import re
 import nltk
+from openpyxl import Workbook
 from urllib.parse import urlparse, unquote
 
 nltk.download('punkt')
@@ -111,67 +111,69 @@ if __name__ == '__main__':
     else:
         m_transcript_filepaths.append(args.transcript)
 
-    with open("urls.csv", "w") as outfile:
-        csvout = csv.writer(outfile)
-        csvout.writerow(['File','Access_Date','Post_Date','URL', 'Site_Reachable', 'Unshortened URL', 'Status', 'Type', 'Hashtag', 'Channel', 'Account', 'Domain', 'Primary_Secondary'])
-        for m_transcript_filepath in m_transcript_filepaths:
-            print('Processing {}'.format(m_transcript_filepath))
-            m_transcript_text = extract_text(m_transcript_filepath)
-            # outfile.write(m_transcript_text)
-            # m_transcript_words = tokenize(m_transcript_text)
+    wb = Workbook(write_only=True)
+    ws = wb.create_sheet()
+    ws.append(['File','Access_Date','Post_Date','URL', 'Site_Reachable', 'Unshortened URL', 'Status', 'Type', 'Hashtag', 'Channel', 'Account', 'Domain', 'Primary_Secondary'])
 
-            # A pretty good regex for finding URLs in Telegram transcripts
-            linkregex = '[\(]?(https|http|tg):(\/\/)[^\s\(\)]+[\)]?'
-            # Note the ( | ) expressions in dateregex: One of the characters is not the usual space character.
-            # It's ord() value is 160, vs. 32 for regular space.  This catches more date matches.
-            dateregex = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)(,( | ))(January|February|March|April|May|June|July|August|September|October|November|December)( | )[0-9]?[0-9](,( | )20)[0-2][0-9]'
-            regex = '(' + linkregex + '|' + dateregex + ')'
-            matches = re.finditer(regex, m_transcript_text, re.MULTILINE)
-            filename = os.path.basename(m_transcript_filepath)
-            lasturl = ''
-            last_date = ''
-            for m in matches:
-                print(m.group())
-                match = m.group()
-                if 'day' in match[3:9]:
-                    # set the date, then move on to the next match
-                    last_date = match.replace(' ', ' ')
-                    continue
+    for m_transcript_filepath in m_transcript_filepaths:
+        print('Processing {}'.format(m_transcript_filepath))
+        m_transcript_text = extract_text(m_transcript_filepath)
+        # outfile.write(m_transcript_text)
+        # m_transcript_words = tokenize(m_transcript_text)
 
-                url = match
-                expanded_url = ''
-                url_domain = ''
-                status = ''
-                extract_date = datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
-                cleaned_url = url.lstrip('(').rstrip(')')
-                if cleaned_url == lasturl:
-                    # skip if successive URLs are exactly identical
-                    continue
-                if cleaned_url.lstrip('tg://join?invite=')[:10] == lasturl.lstrip('https://telegram.me/joinchat/')[:10]:
-                    # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
-                    continue
-                if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://telegram.me/')[:10]:
-                    # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
-                    continue
-                lasturl = cleaned_url
-                site_reachable = None
-                if cleaned_url.startswith('http'):
-                    expanded_url, status = unshorten(cleaned_url)
-                    if expanded_url is '':  # like if it couldn't reach the site
-                        site_reachable = False
-                        # Then just stick with the original URL
-                        url_domain = domain(cleaned_url)
-                    else:
-                        site_reachable = True
-                        # Use the expanded URL
-                        url_domain = domain(expanded_url)
-                utype, hashtag, channel, account = urltype(expanded_url or cleaned_url) # if expanded_url isn't empty, use it; otherwise use url
-                if utype == 'tg_channel_id':
-                    # skip, please
-                    continue
-                # Comment this out of debugging - there may be some remaining patterns we want to recategories.
-                if utype == 'tg_other':
-                    continue
-                if utype != 'external':
-                    site_reachable = ''
-                csvout.writerow([filename, extract_date, last_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
+        # A pretty good regex for finding URLs in Telegram transcripts
+        linkregex = '[\(]?(https|http|tg):(\/\/)[^\s\(\)]+[\)]?'
+        # Note the ( | ) expressions in dateregex: One of the characters is not the usual space character.
+        # It's ord() value is 160, vs. 32 for regular space.  This catches more date matches.
+        dateregex = '(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)(,( | ))(January|February|March|April|May|June|July|August|September|October|November|December)( | )[0-9]?[0-9](,( | )20)[0-2][0-9]'
+        regex = '(' + linkregex + '|' + dateregex + ')'
+        matches = re.finditer(regex, m_transcript_text, re.MULTILINE)
+        filename = os.path.basename(m_transcript_filepath)
+        lasturl = ''
+        last_date = ''
+        for m in matches:
+            print(m.group())
+            match = m.group()
+            if 'day' in match[3:9]:
+                # set the date, then move on to the next match
+                last_date = match.replace(' ', ' ')
+                continue
+
+            url = match
+            expanded_url = ''
+            url_domain = ''
+            status = ''
+            extract_date = datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
+            cleaned_url = url.lstrip('(').rstrip(')')
+            if cleaned_url == lasturl:
+                # skip if successive URLs are exactly identical
+                continue
+            if cleaned_url.lstrip('tg://join?invite=')[:10] == lasturl.lstrip('https://telegram.me/joinchat/')[:10]:
+                # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
+                continue
+            if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://telegram.me/')[:10]:
+                # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
+                continue
+            lasturl = cleaned_url
+            site_reachable = None
+            if cleaned_url.startswith('http'):
+                expanded_url, status = unshorten(cleaned_url)
+                if expanded_url is '':  # like if it couldn't reach the site
+                    site_reachable = False
+                    # Then just stick with the original URL
+                    url_domain = domain(cleaned_url)
+                else:
+                    site_reachable = True
+                    # Use the expanded URL
+                    url_domain = domain(expanded_url)
+            utype, hashtag, channel, account = urltype(expanded_url or cleaned_url) # if expanded_url isn't empty, use it; otherwise use url
+            if utype == 'tg_channel_id':
+                # skip, please
+                continue
+            # Comment this out of debugging - there may be some remaining patterns we want to recategories.
+            if utype == 'tg_other':
+                continue
+            if utype != 'external':
+                site_reachable = ''
+            ws.append([filename, extract_date, last_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
+    wb.save('urls.xlsx')
