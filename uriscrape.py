@@ -77,6 +77,8 @@ def urltype(url):
         return 'tg_account','','',u[20:]
     if u.startswith('https://t.me/'):
         return 'tg_account','','',u[13:]
+    if u.startswith('http://t.me/'):
+        return 'tg_account', '', '', u[12:]
     if u.startswith('tg://resolve?domain='):
         return 'tg_account','','',u[20:]
 
@@ -159,6 +161,9 @@ if __name__ == '__main__':
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
             if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://t.me/')[:10]:
+                # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
+                continue
+            if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('http://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
             lasturl = cleaned_url
