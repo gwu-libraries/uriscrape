@@ -7,7 +7,7 @@ import os
 import sys
 import re
 import nltk
-from openpyxl import Workbook
+import openpyxl
 from urllib.parse import urlparse, unquote
 
 nltk.download('punkt')
@@ -75,7 +75,7 @@ def urltype(url):
 
     if u.startswith('https://telegram.me/'):
         return 'tg_account','','',u[20:]
-    if u.startswith('https://t.me'):
+    if u.startswith('https://t.me/'):
         return 'tg_account','','',u[13:]
     if u.startswith('tg://resolve?domain='):
         return 'tg_account','','',u[20:]
@@ -111,8 +111,9 @@ if __name__ == '__main__':
     else:
         m_transcript_filepaths.append(args.transcript)
 
-    wb = Workbook(write_only=True)
-    ws = wb.create_sheet()
+    # wb = openpyxl.Workbook(write_only=True)
+    wb = openpyxl.Workbook()
+    ws = wb.active
     ws.append(['File','Access_Date','Post_Date','URL', 'Site_Reachable', 'Unshortened URL', 'Status', 'Type', 'Hashtag', 'Channel', 'Account', 'Domain', 'Primary_Secondary'])
 
     for m_transcript_filepath in m_transcript_filepaths:
@@ -151,7 +152,13 @@ if __name__ == '__main__':
             if cleaned_url.lstrip('tg://join?invite=')[:10] == lasturl.lstrip('https://telegram.me/joinchat/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
+            if cleaned_url.lstrip('tg://join?invite=')[:10] == lasturl.lstrip('https://t.me/joinchat/')[:10]:
+                # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
+                continue
             if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://telegram.me/')[:10]:
+                # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
+                continue
+            if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
             lasturl = cleaned_url
@@ -175,5 +182,9 @@ if __name__ == '__main__':
                 continue
             if utype != 'external':
                 site_reachable = ''
-            ws.append([filename, extract_date, last_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
+            try:
+                ws.append([filename, extract_date, last_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
+            except openpyxl.utils.exceptions.IllegalCharacterError as e:
+                # we're just going to swallow these for now, and skip writing the row
+                pass
     wb.save('urls.xlsx')
