@@ -24,7 +24,7 @@ def unshorten(url):
     """Don't try to guess; just resolve it, and follow 301s"""
     status = ''
     try:
-        h = requests.get(url)
+        h = requests.get(url, timeout=10)
         stack = [i.url for i in h.history]
         stack.append(h.url)
         stack = stack[-1]  # Just keep the last one
