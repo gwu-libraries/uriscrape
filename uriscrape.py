@@ -182,6 +182,9 @@ if __name__ == '__main__':
             if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'http://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
+            if cleaned_url.startswith('https://web.telegram.org/#/im?p='):
+                # skip if this is the channel link that usually appears at the bottom of each page of the PDF
+                continue
             lasturl = cleaned_url
             site_reachable = None
             if cleaned_url.startswith('http'):
@@ -195,10 +198,7 @@ if __name__ == '__main__':
                     # Use the expanded URL
                     url_domain = domain(expanded_url)
             utype, hashtag, channel, account = urltype(expanded_url or cleaned_url) # if expanded_url isn't empty, use it; otherwise use url
-            if utype == 'tg_channel_id':
-                # skip, please
-                continue
-            # Comment this out of debugging - there may be some remaining patterns we want to recategories.
+            # Comment the next `if` block out if debugging - there may be some remaining patterns we want to recategorize.
             if utype == 'tg_other':
                 continue
             if utype != 'external':
