@@ -29,7 +29,16 @@ optional arguments:
 ## Output file
 
 **`urls.xlsx`** - All found URIs, including columns/variables as follows:
+- *File*: PDF file processed
+- *Access_Date*: Date/time the program was run. May be important for documenting when the program attempted to resolve URIs
+- *Post_Date*: Date of the post, as derived from the date labels in the Telegram transcript
 - *URL*: URL as found
+- *Site_Reached*: True/False - whether the URI was able to be resolved
 - *Unshortened URL*: Unshortened URL (e.g.  https://youtu.be/lqXwyl89xU4 -> unshortens to https://www.youtube.com/watch?v=lqXwyl89xU4&feature=youtu.be )
+- *Status*: Error code, if an error was encountered in trying to access the URI
+- *Type*: Classification of the link
+- *Hashtag*: Hashtag, if the link is a Telegram hashtag link
+- *Channel*: Channel, if the link is a Telegram join link
+- *Account*: Account, if the link is a Telegram account link
 - *Domain*: Full server daomain (e.g. www.youtube.com)
 - *Primary_Secondary*: Just the primary and secondary portions of the domain (e.g. youtube.com)
