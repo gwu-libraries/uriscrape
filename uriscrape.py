@@ -134,12 +134,16 @@ if __name__ == '__main__':
         filename = os.path.basename(m_transcript_filepath)
         lasturl = ''
         last_date = ''
+        last_date_mmddyyyy = None
         for m in matches:
             print(m.group())
             match = m.group()
+            # if the match is a date, not a link
             if 'day' in match[3:9]:
                 # set the date, then move on to the next match
                 last_date = match.replace(' ', ' ')
+                last_date_obj = datetime.datetime.strptime(last_date, "%A, %B %d, %Y")
+                last_date_mmddyyyy = last_date_obj.strftime("%m/%d/%Y")
                 continue
 
             url = match
@@ -188,7 +192,7 @@ if __name__ == '__main__':
             if utype != 'external':
                 site_reachable = ''
             try:
-                ws.append([filename, extract_date, last_date, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
+                ws.append([filename, extract_date, last_date_mmddyyyy, unquote(cleaned_url), site_reachable, unquote(expanded_url), status, utype, hashtag, channel, account, url_domain, primary_secondary(url_domain)])
             except openpyxl.utils.exceptions.IllegalCharacterError as e:
                 # we're just going to swallow these for now, and skip writing the row
                 pass
