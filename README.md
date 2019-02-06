@@ -28,7 +28,7 @@ optional arguments:
 
 ## Output file
 
-**`urls.csv`** - All found URIs, with columns/variables as follows:
+**`urls.xlsx`** - All found URIs, including columns/variables as follows:
 - *URL*: URL as found
 - *Unshortened URL*: Unshortened URL (e.g.  https://youtu.be/lqXwyl89xU4 -> unshortens to https://www.youtube.com/watch?v=lqXwyl89xU4&feature=youtu.be )
 - *Domain*: Full server daomain (e.g. www.youtube.com)
