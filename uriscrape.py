@@ -43,6 +43,14 @@ def unshorten(url):
     return stack, status
 
 
+def lstringstrip(s_orig, s_strip):
+    """ Left-strip a whole string, not 'any of these characters' like str.lstrip does """
+    if s_orig.startswith(s_strip):
+        return s_orig[len(s_strip):]
+    else:
+        return s_orig
+
+
 def domain(url):
     """ Pull out just the server domain part as a list """
     return urlparse(url).netloc
@@ -155,19 +163,23 @@ if __name__ == '__main__':
             if cleaned_url == lasturl:
                 # skip if successive URLs are exactly identical
                 continue
-            if cleaned_url.lstrip('tg://join?invite=')[:10] == lasturl.lstrip('https://telegram.me/joinchat/')[:10]:
+            if lstringstrip(lstringstrip(cleaned_url, 'https://'), 'http://').rstrip('/') == \
+                    lstringstrip(lstringstrip(lasturl, 'https://'), 'http://').rstrip('/'):
+                # skip if they point to the same endpoint, even with http vs. https protocol, treat as the same. Ignore trailing `'/'
+                continue
+            if lstringstrip(cleaned_url, 'tg://join?invite=')[:10] == lstringstrip(lasturl, 'https://telegram.me/joinchat/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if cleaned_url.lstrip('tg://join?invite=')[:10] == lasturl.lstrip('https://t.me/joinchat/')[:10]:
+            if lstringstrip(cleaned_url, 'tg://join?invite=')[:10] == lstringstrip(lasturl, 'https://t.me/joinchat/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://telegram.me/')[:10]:
+            if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'https://telegram.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('https://t.me/')[:10]:
+            if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'https://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if cleaned_url.lstrip('tg://resolve?domain=')[:10] == lasturl.lstrip('http://t.me/')[:10]:
+            if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'http://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
             lasturl = cleaned_url
