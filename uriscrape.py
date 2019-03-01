@@ -188,15 +188,19 @@ if __name__ == '__main__':
             lasturl = cleaned_url
             site_reachable = None
             if cleaned_url.startswith('http'):
-                expanded_url, status = unshorten(cleaned_url)
-                if expanded_url is '':  # like if it couldn't reach the site
-                    site_reachable = False
-                    # Then just stick with the original URL
-                    url_domain = domain(cleaned_url)
-                else:
-                    site_reachable = True
-                    # Use the expanded URL
-                    url_domain = domain(expanded_url)
+                try:
+                    expanded_url, status = unshorten(cleaned_url)
+                    if expanded_url is '':  # like if it couldn't reach the site
+                        site_reachable = False
+                        # Then just stick with the original URL
+                        url_domain = domain(cleaned_url)
+                    else:
+                        site_reachable = True
+                        # Use the expanded URL
+                        url_domain = domain(expanded_url)
+                except ValueError as ve:
+                    # if the URL isn't valid, then skip
+                    continue
             utype, hashtag, channel, account = urltype(expanded_url or cleaned_url) # if expanded_url isn't empty, use it; otherwise use url
             # Comment the next `if` block out if debugging - there may be some remaining patterns we want to recategorize.
             if utype == 'tg_other':
@@ -208,4 +212,4 @@ if __name__ == '__main__':
             except openpyxl.utils.exceptions.IllegalCharacterError as e:
                 # we're just going to swallow these for now, and skip writing the row
                 pass
-    wb.save('urls.xlsx')
+    wb.save('urls.xlsx' + datetime.datetime.now().strftime("%Y%m%d_%H%M"))
