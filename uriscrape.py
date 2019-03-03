@@ -212,4 +212,4 @@ if __name__ == '__main__':
             except openpyxl.utils.exceptions.IllegalCharacterError as e:
                 # we're just going to swallow these for now, and skip writing the row
                 pass
-    wb.save('urls.xlsx' + datetime.datetime.now().strftime("%Y%m%d_%H%M"))
+    wb.save('urls' + datetime.datetime.now().strftime("%Y%m%d_%H%M") + '.xlsx')
