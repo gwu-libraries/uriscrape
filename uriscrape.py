@@ -53,7 +53,11 @@ def lstringstrip(s_orig, s_strip):
 
 def domain(url):
     """ Pull out just the server domain part as a list """
-    return urlparse(url).netloc
+    nl = urlparse(url).netloc
+    if len(nl.split('.')) < 2:
+        # we don't want incomplete domains like 'http://www'
+        raise ValueError
+    return nl
 
 
 def primary_secondary(url):
@@ -77,10 +81,8 @@ def urltype(url):
         return 'tg_joinlink','',u[22:],''
     if u.startswith('tg://join?invite='):
         return 'tg_joinlink','',u[17:],''
-
     if u.startswith('https://web.telegram.org/#/im?p='):
         return 'tg_channel_id','','',''
-
     if u.startswith('https://telegram.me/'):
         return 'tg_account','','',u[20:]
     if u.startswith('https://t.me/'):
@@ -89,10 +91,8 @@ def urltype(url):
         return 'tg_account', '', '', u[12:]
     if u.startswith('tg://resolve?domain='):
         return 'tg_account','','',u[20:]
-
     if u.startswith('tg://search_hashtag'):
         return 'tg_hashtag',u[28:],'',''
-
     if 'web.telegram.org' in u \
             or 'telegram.org' in u \
             or 'telegram.me' in u \
@@ -160,29 +160,39 @@ if __name__ == '__main__':
             status = ''
             extract_date = datetime.datetime.now().strftime("%m/%d/%y %H:%M:%S")
             cleaned_url = url.lstrip('(').rstrip(')')
+            # if lasturl is too short, some of the tests below will always be true
+            if len(lasturl) <= 12:
+                lasturl = "This definitely will not match!"
             if cleaned_url == lasturl:
                 # skip if successive URLs are exactly identical
                 continue
-            if lstringstrip(lstringstrip(cleaned_url, 'https://'), 'http://').rstrip('/') == \
+            if cleaned_url.startswith('http') and \
+                    lstringstrip(lstringstrip(cleaned_url, 'https://'), 'http://').rstrip('/') == \
                     lstringstrip(lstringstrip(lasturl, 'https://'), 'http://').rstrip('/'):
                 # skip if they point to the same endpoint, even with http vs. https protocol, treat as the same. Ignore trailing `'/'
                 continue
-            if lstringstrip(cleaned_url, 'tg://join?invite=')[:10] == lstringstrip(lasturl, 'https://telegram.me/joinchat/')[:10]:
+            if cleaned_url.startswith('tg:join?invite=') and \
+                    lstringstrip(cleaned_url, 'tg://join?invite=')[:10] == lstringstrip(lasturl, 'https://telegram.me/joinchat/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if lstringstrip(cleaned_url, 'tg://join?invite=')[:10] == lstringstrip(lasturl, 'https://t.me/joinchat/')[:10]:
+            if cleaned_url.startswith('tg:join?invite=') and \
+                    lstringstrip(cleaned_url, 'tg://join?invite=')[:10] == lstringstrip(lasturl, 'https://t.me/joinchat/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'https://telegram.me/')[:10]:
+            if cleaned_url.startswith('tg://resolve?domain=') and \
+                    lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'https://telegram.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'https://t.me/')[:10]:
+            if cleaned_url.startswith('tg://resolve?domain=') and \
+                    lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'https://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'http://t.me/')[:10]:
+            if cleaned_url.startswith('tg://resolve?domain=') and \
+                    lstringstrip(cleaned_url, 'tg://resolve?domain=')[:10] == lstringstrip(lasturl, 'http://t.me/')[:10]:
                 # skip if these are identical out to 10 characters.  This ignores junk that tends to get concatenated on.
                 continue
-            if cleaned_url.startswith('https://web.telegram.org/#/im?p='):
+            if cleaned_url.startswith('https://web.telegram.org/#/im?p=') and \
+                    cleaned_url.startswith('https://web.telegram.org/#/im?p='):
                 # skip if this is the channel link that usually appears at the bottom of each page of the PDF
                 continue
             lasturl = cleaned_url
@@ -203,6 +213,9 @@ if __name__ == '__main__':
                     continue
             utype, hashtag, channel, account = urltype(expanded_url or cleaned_url) # if expanded_url isn't empty, use it; otherwise use url
             # Comment the next `if` block out if debugging - there may be some remaining patterns we want to recategorize.
+            if utype == 'tg_hashtag' and hashtag == '':
+                # skip empty hashtags
+                continue
             if utype == 'tg_other':
                 continue
             if utype != 'external':
